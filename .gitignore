@@ -25,5 +25,7 @@
 
 # Executables
 *.exe
-*.out
 *.app
+*.out
+
+*.swp
