@@ -45,33 +45,13 @@ static constexpr auto tupler()
 
 namespace detail
 {
-template <typename F, typename Tuple, bool Done, int Total, int... N>
-struct call_impl
-{
-  static auto call(F f, Tuple&& t)
-  {
-    return call_impl<F, Tuple, Total == 1 + sizeof...(N), Total, N..., sizeof...(N)>::call(f,
-                                                                                           std::forward<Tuple>(t));
-  }
-};
 
-template <typename F, typename Tuple, int Total, int... N>
-struct call_impl<F, Tuple, true, Total, N...>
-{
-  static auto call(F f, Tuple&& t) { return f(std::get<N>(std::forward<Tuple>(t))...); }
-};
-}  // namespace detail
-
-template <typename F, typename Tuple>
-auto call(F f, Tuple&& t)
-{
-  typedef typename std::decay<Tuple>::type ttype;
-  return detail::call_impl<F,
-                           Tuple,
-                           0 == std::tuple_size<ttype>::value,
-                           std::tuple_size<ttype>::value
-                          >::call(f, std::forward<Tuple>(t));
+template<typename F, typename Tup, size_t ...I>
+auto call( F&& f, Tup&& t, std::index_sequence<I...> ) {
+    return std::forward<F>(f) ( std::get<I>( std::forward<Tup>(t) )... );
 }
+
+}  // namespace detail
 
 template <typename T>
 struct function_traits : function_traits<decltype(&T::operator())>
@@ -90,6 +70,16 @@ struct function_traits<ReturnType (ClassType::*)(Args...) const>  // we speciali
   template <size_t i>
   using arg = std::tuple_element_t<i, all_args>;
 };
+
+template<typename F, typename Tup >
+auto call( F&& f, Tup&& t ) {
+    using T = std::decay_t<Tup>;
+
+    constexpr auto size = std::tuple_size<T>(); // N3545 for the use of operator().
+    using indicies = std::make_index_sequence<size>;
+
+    return detail::call( std::forward<F>(f), std::forward<Tup>(t), indicies{} );
+}
 
 }  // namespace quick_impl
 
